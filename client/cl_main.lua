@@ -43,14 +43,14 @@ local function TestCar(pPos)
 
         while IsPedInAnyVehicle(PlayerPedId()) == false do
             DeleteEntity(GetClosestVehicle(GetEntityCoords(PlayerPedId()), 15.0, 0, 70))
-            ESX.ShowNotification("~r~Vous êtes descendu du véhicule.")
+            ESX.ShowNotification("Vous êtes descendu du véhicule")
             test = false
             SetEntityCoords(PlayerPedId(), pPos.x, pPos.y, pPos.z)
             break
         end
         if result == 0 then
             DeleteEntity(GetVehiclePedIsIn(PlayerPedId(), false))
-            ESX.ShowNotification("~r~Test terminé.")
+            ESX.ShowNotification("Test terminé")
             test = false
             SetEntityCoords(PlayerPedId(), pPos.x, pPos.y, pPos.z)
             break
@@ -59,14 +59,32 @@ local function TestCar(pPos)
     end
 end
 
+function DrawText3Ds(x, y, z, text)
+	local onScreen,_x,_y=World3dToScreen2d(x,y,z)
+
+	if onScreen then
+		SetTextScale(0.31, 0.31)
+		SetTextFont(0)
+		SetTextProportional(1)
+		SetTextColour(255, 255, 255, 255)
+		SetTextEntry("STRING")
+		SetTextOutline()
+		SetTextDropshadow(0, 0, 0, 0, 0)
+		SetTextDropShadow()
+		AddTextComponentString(text)
+		SetTextCentre(1)
+		DrawText(_x,_y)
+	end
+end
+
 -- Menu
 
 local heading = 0
 local select = {}
 local open  = false
-local mainMenu = RageUI.CreateMenu("Concessionnaire", "Categories", nil, nil, "root_cause5", "img_red")
-local show_car = RageUI.CreateSubMenu(mainMenu, "Concessionnaire", "Vehicules")
-local selection = RageUI.CreateSubMenu(show_car, "Concessionnaire", "Interaction")
+local mainMenu = RageUI.CreateMenu(nil, "CATEGORIE", nil, nil, "root_cause5", "img_red")
+local show_car = RageUI.CreateSubMenu(mainMenu, nil, "VEHICULE")
+local selection = RageUI.CreateSubMenu(show_car, nil, "INFORMATION")
 mainMenu.Display.Header = true
 selection.EnableMouse = true
 mainMenu.Closed = function()
@@ -78,7 +96,7 @@ selection.Closed = function() select = {} DeleteEntity(entity) entity = nil car 
 
 local Customs = { List1 = 1, List2 = 1, List3 = 1 }
 
-local function MenuConcessionnaire()
+local function MenuConcessionnaire() -- NOM CATEGORIE --
     if open then
         open = false
         RageUI.Visible(mainMenu, false)
@@ -90,7 +108,7 @@ local function MenuConcessionnaire()
                 Wait(0)
                 RageUI.IsVisible(mainMenu, function()
                     for _,v in pairs(categories) do
-                        RageUI.Button(("~r~→~s~ %s"):format(v.label), nil, {RightBadge = RageUI.BadgeStyle.Star}, true, {
+                        RageUI.Button(("%s"):format(v.label), nil, {RightBadge = RageUI.BadgeStyle.Star}, true, {
                             onSelected = function()
                                 getVehicles(v.name)
                                 getStockage(v.name)
@@ -100,9 +118,9 @@ local function MenuConcessionnaire()
                 end)
                 RageUI.IsVisible(show_car, function()
                     for _,v in pairs(vehicles) do
-                        RageUI.Button(("~r~→~s~ %s"):format(v.name), nil, {RightBadge = RageUI.BadgeStyle.Tick}, true, {
+                        RageUI.Button(("%s"):format(v.name), nil, {RightBadge = RageUI.BadgeStyle.Tick}, true, {
                             onActive = function()
-                                RageUI.Info(("~r~%s~s~"):format(v.name),{"Prix:", "Coffre:"}, {("~g~%s$~s~"):format(v.price), ("~r~%skg~s~"):format(weight)})
+                                RageUI.Info(("~r~%s~s~"):format(v.name),{"Prix :", "Coffre :"}, {("~g~%s$~s~"):format(v.price), ("~r~%skg~s~"):format(weight)})
                             end,
                             onSelected = function()
                                 table.insert(select, {name = v.name, model = v.model, price = v.price})
@@ -112,104 +130,115 @@ local function MenuConcessionnaire()
                 end)
                 RageUI.IsVisible(selection, function()
                     for _,v in pairs(select) do
-                        RageUI.Button(("Tester le véhicule (~r~%smin~s~)"):format(xCarDealer.TimeForTest), nil, {RightLabel = "→"}, true, {
-                            onActive = function()
-                                heading = heading + 0.02
-                                SetEntityHeading(entity, heading)
-                                if car == false then
+                        heading = heading + 0.1
+                        FreezeEntityPosition(entity, true)
+                        SetEntityHeading(entity, heading)
+                        if car == false then
+                            RequestModel(GetHashKey(v.model))
+                            while not HasModelLoaded(GetHashKey(v.model)) do 
+                              Wait(1) 
+                            end
+                            entity = CreateVehicle(v.model, xCarDealer.Position.Exposition.x, xCarDealer.Position.Exposition.y, xCarDealer.Position.Exposition.z, heading, true, false)
+                            car = true
+                        else
+                            RageUI.Button(("Essayer le véhicule (~r~%smin~s~)"):format(xCarDealer.TimeForTest), nil, {RightLabel = "→"}, true, {
+                                onActive = function()
+                                    if car == false then
+                                        RequestModel(GetHashKey(v.model))
+                                        while not HasModelLoaded(GetHashKey(v.model)) do 
+                                        Wait(1) 
+                                        end
+                                        entity = CreateVehicle(v.model, xCarDealer.Position.Exposition.x, xCarDealer.Position.Exposition.y, xCarDealer.Position.Exposition.z, heading, true, false)
+                                        car = true
+                                    end
+                                end,
+                                onSelected = function()
+                                    DeleteEntity(entity) entity = nil car = false
                                     RequestModel(GetHashKey(v.model))
                                     while not HasModelLoaded(GetHashKey(v.model)) do 
-                                      Wait(1) 
+                                    Wait(1) 
                                     end
-                                    entity = CreateVehicle(v.model, xCarDealer.Position.Exposition.x, xCarDealer.Position.Exposition.y, xCarDealer.Position.Exposition.z, heading, true, false)
-                                    car = true
+                                    local pPos = GetEntityCoords(PlayerPedId())
+                                    local vehicle = CreateVehicle(v.model, xCarDealer.Position.SpwanCarForTest.x, xCarDealer.Position.SpwanCarForTest.y, xCarDealer.Position.SpwanCarForTest.z, xCarDealer.Position.HeadingForTest, true, false)
+                                    SetVehicleFuelLevel(vehicle, 60.0)
+                                    SetVehicleDirtLevel(vehicle, 0)
+                                    SetPedIntoVehicle(PlayerPedId(), vehicle, -1)
+                                    TestCar(pPos)
+                                    select = {}
                                 end
-                            end,
-                            onSelected = function()
-                                DeleteEntity(entity) entity = nil car = false
-                                RequestModel(GetHashKey(v.model))
-                                while not HasModelLoaded(GetHashKey(v.model)) do 
-                                  Wait(1) 
+                            })
+                            RageUI.List("Couleur", {"Noir", "Gris", "Blanc", "Beige", "Vert", "Vert foncé", "Jaune", "Orange", "Rouge", "Rose", "Violet", "Bleu", "Bleu foncé", "Marron", }, Customs.List2, nil, {Preview}, true, {
+                                onListChange = function(i, Index)
+                                    Customs.List2 = i
+                                end,
+                                onSelected = function()
+                                    if Customs.List2 == 1 then SetVehicleColours(entity, 0, 0) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 2 then SetVehicleColours(entity, 6, 6) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 3 then SetVehicleColours(entity, 111, 111) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 4 then SetVehicleColours(entity, 99, 99) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 5 then SetVehicleColours(entity, 53, 53) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 6 then SetVehicleColours(entity, 49, 49) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 7 then SetVehicleColours(entity, 88, 88) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 8 then SetVehicleColours(entity, 38, 38) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 9 then SetVehicleColours(entity, 27, 27) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 10 then SetVehicleColours(entity, 135, 135) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 11 then SetVehicleColours(entity, 145, 145) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 12 then SetVehicleColours(entity, 70, 70) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 13 then SetVehicleColours(entity, 75, 75) SetVehicleExtraColours(entity, 0, 0) end
+                                    if Customs.List2 == 14 then SetVehicleColours(entity, 96, 96) SetVehicleExtraColours(entity, 0, 0) end
                                 end
-                                local pPos = GetEntityCoords(PlayerPedId())
-                                local vehicle = CreateVehicle(v.model, xCarDealer.Position.SpwanCarForTest.x, xCarDealer.Position.SpwanCarForTest.y, xCarDealer.Position.SpwanCarForTest.z, xCarDealer.Position.HeadingForTest, true, false)
-                                SetVehicleFuelLevel(vehicle, 60.0)
-                                SetVehicleDirtLevel(vehicle, 0)
-                                SetPedIntoVehicle(PlayerPedId(), vehicle, -1)
-                                TestCar(pPos)
-                                select = {}
-                            end
-                        })
-                        RageUI.List("Acheter le véhicule", {"Liquide", "Carte Bancaire"}, Customs.List1, nil, {Preview}, true, {
-                            onListChange = function(i, Index)
-                                Customs.List1 = i
-                            end,
-                            onSelected = function()
-                                local vehicle = ESX.Game.GetVehicleProperties(entity)
-                                if Customs.List1 == 1 then
-                                    ESX.TriggerServerCallback("xCarDealer:sellCar_E", function(can) 
-                                        if can then
-                                            DeleteEntity(entity) entity = nil car = false
-                                            select = {}
-                                            RequestModel(GetHashKey(v.model))
-                                            while not HasModelLoaded(GetHashKey(v.model)) do 
-                                            Wait(1) 
+                            })
+                            RageUI.Line()
+                            RageUI.Separator(("Nombre de place : ~r~%s~s~"):format(GetVehicleMaxNumberOfPassengers(entity) + 1))
+                            RageUI.Separator(("Prix : ~g~%s$~s~"):format(v.price))
+                            RageUI.Separator(("Coffre : ~r~%skg~s~"):format(weight))
+
+                            RageUI.List("Acheter le véhicule", {"~g~Liquide~s~", "~b~Carte Bancaire~s~"}, Customs.List1, nil, {Preview}, true, {
+                                onListChange = function(i, Index)
+                                    Customs.List1 = i
+                                end,
+                                onSelected = function()
+                                    local vehicle = ESX.Game.GetVehicleProperties(entity)
+                                    if Customs.List1 == 1 then
+                                        ESX.TriggerServerCallback("xCarDealer:sellCar_E", function(can) 
+                                            if can then
+                                                DeleteEntity(entity) entity = nil car = false
+                                                select = {}
+                                                RequestModel(GetHashKey(v.model))
+                                                while not HasModelLoaded(GetHashKey(v.model)) do 
+                                                Wait(1) 
+                                                end
+                                                local car = CreateVehicle(v.model, xCarDealer.Position.SpawnCarWhenBy.x, xCarDealer.Position.SpawnCarWhenBy.y, xCarDealer.Position.SpawnCarWhenBy.z, xCarDealer.Position.HeadingWhenBy, true, false)
+                                                ESX.Game.SetVehicleProperties(car, vehicle)
+                                                SetPedIntoVehicle(PlayerPedId(), car, -1)
+                                                RageUI.CloseAll()
+                                                FreezeEntityPosition(PlayerPedId(), false)
                                             end
-                                            local car = CreateVehicle(v.model, xCarDealer.Position.SpawnCarWhenBy.x, xCarDealer.Position.SpawnCarWhenBy.y, xCarDealer.Position.SpawnCarWhenBy.z, xCarDealer.Position.HeadingWhenBy, true, false)
-                                            ESX.Game.SetVehicleProperties(car, vehicle)
-                                            SetPedIntoVehicle(PlayerPedId(), car, -1)
-                                            RageUI.CloseAll()
-                                            FreezeEntityPosition(PlayerPedId(), false)
-                                        end
-                                    end, vehicle, tonumber(v.price))
-                                end
-                                if Customs.List1 == 2 then
-                                    ESX.TriggerServerCallback("xCarDealer:sellCar_CB", function(can) 
-                                        if can then
-                                            DeleteEntity(entity) entity = nil car = false
-                                            select = {}
-                                            RequestModel(GetHashKey(v.model))
-                                            while not HasModelLoaded(GetHashKey(v.model)) do 
-                                            Wait(1) 
+                                        end, vehicle, tonumber(v.price))
+                                    end
+                                    if Customs.List1 == 2 then
+                                        ESX.TriggerServerCallback("xCarDealer:sellCar_CB", function(can) 
+                                            if can then
+                                                DeleteEntity(entity) entity = nil car = false
+                                                select = {}
+                                                RequestModel(GetHashKey(v.model))
+                                                while not HasModelLoaded(GetHashKey(v.model)) do 
+                                                Wait(1) 
+                                                end
+                                                local car = CreateVehicle(v.model, xCarDealer.Position.SpawnCarWhenBy.x, xCarDealer.Position.SpawnCarWhenBy.y, xCarDealer.Position.SpawnCarWhenBy.z, xCarDealer.Position.HeadingWhenBy, true, false)
+                                                ESX.Game.SetVehicleProperties(car, vehicle)
+                                                SetPedIntoVehicle(PlayerPedId(), car, -1)
+                                                RageUI.CloseAll()
+                                                FreezeEntityPosition(PlayerPedId(), false)
                                             end
-                                            local car = CreateVehicle(v.model, xCarDealer.Position.SpawnCarWhenBy.x, xCarDealer.Position.SpawnCarWhenBy.y, xCarDealer.Position.SpawnCarWhenBy.z, xCarDealer.Position.HeadingWhenBy, true, false)
-                                            ESX.Game.SetVehicleProperties(car, vehicle)
-                                            SetPedIntoVehicle(PlayerPedId(), car, -1)
-                                            RageUI.CloseAll()
-                                            FreezeEntityPosition(PlayerPedId(), false)
-                                        end
-                                    end, vehicle, tonumber(v.price))
+                                        end, vehicle, tonumber(v.price))
+                                    end
                                 end
-                            end
-                        })
-                        RageUI.Line()
-                        RageUI.Separator(("~r~→~s~ Nombre de place: ~r~%s~s~"):format(GetVehicleMaxNumberOfPassengers(entity) + 1))
-                        RageUI.Separator(("~r~→~s~ Prix: ~g~%s$~s~"):format(v.price))
-                        RageUI.Separator(("~r~→~s~ Coffre: ~r~%skg~s~"):format(weight))
-                        RageUI.List("Couleur Primaire", {"Rouge", "Vert", "Bleu", "Noir"}, Customs.List2, nil, {Preview}, true, {
-                            onListChange = function(i, Index)
-                                Customs.List2 = i
-                            end,
-                            onSelected = function()
-                                if Customs.List2 == 1 then SetVehicleCustomPrimaryColour(entity, 255, 0, 0) end
-                                if Customs.List2 == 2 then  SetVehicleCustomPrimaryColour(entity, 0, 255, 0) end
-                                if Customs.List2 == 3 then  SetVehicleCustomPrimaryColour(entity, 0, 0, 255) end
-                                if Customs.List2 == 4 then  SetVehicleCustomPrimaryColour(entity, 0, 0, 0) end
-                            end
-                        })
-                        RageUI.List("Couleur Secondaire", {"Rouge", "Vert", "Bleu", "Noir"}, Customs.List3, nil, {Preview}, true, {
-                            onListChange = function(i, Index)
-                                Customs.List3 = i
-                            end,
-                            onSelected = function()
-                                if Customs.List3 == 1 then SetVehicleCustomSecondaryColour(entity, 255, 0, 0) end
-                                if Customs.List3 == 2 then  SetVehicleCustomSecondaryColour(entity, 0, 255, 0) end
-                                if Customs.List3 == 3 then  SetVehicleCustomSecondaryColour(entity, 0, 0, 255) end
-                                if Customs.List3 == 4 then  SetVehicleCustomSecondaryColour(entity, 0, 0, 0) end
-                            end
-                        })
-                        RageUI.StatisticPanel((GetVehicleModelEstimatedMaxSpeed(GetHashKey(v.model))/60), "Vitesse maximal")
-                        RageUI.StatisticPanel((GetVehicleModelMaxBraking(GetHashKey(v.model))/2), "Freinage")
+                            })
+
+                            RageUI.StatisticPanel((GetVehicleModelEstimatedMaxSpeed(GetHashKey(v.model))/60), "Vitesse maximal")
+                            RageUI.StatisticPanel((GetVehicleModelMaxBraking(GetHashKey(v.model))/2), "Freinage")
+                        end
                     end
                 end)
             end
@@ -230,13 +259,15 @@ Citizen.CreateThread(function()
 
             if dst <= 10.0 then
                 wait = 0
-                DrawMarker(xCarDealer.MarkerType, pos[k].x, pos[k].y, (pos[k].z) - 1.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0, xCarDealer.MarkerSizeLargeur, xCarDealer.MarkerSizeEpaisseur, xCarDealer.MarkerSizeHauteur, xCarDealer.MarkerColorR, xCarDealer.MarkerColorG, xCarDealer.MarkerColorB, xCarDealer.MarkerOpacite, xCarDealer.MarkerSaute, true, p19, xCarDealer.MarkerTourne)
+                DrawMarker(xCarDealer.MarkerType, pos[k].x, pos[k].y, (pos[k].z) - 1.0, 0.0, 0.0, 0.0, -90.0, 0.0, 0.0, xCarDealer.MarkerSizeLargeur, xCarDealer.MarkerSizeEpaisseur, xCarDealer.MarkerSizeHauteur, xCarDealer.MarkerColorR, xCarDealer.MarkerColorG, xCarDealer.MarkerColorB, xCarDealer.MarkerOpacite, xCarDealer.MarkerSaute, true, p19, xCarDealer.MarkerTourne)
             end
-            if dst <= 1.0 then
+            if dst <= 2.0 then
                 wait = 0
-                if (not open) then ESX.ShowHelpNotification("Appuyez sur ~INPUT_CONTEXT~ pour ~r~intéragir~s~.") end
+                if (not open) then 
+                    DrawText3Ds(pos[k].x, pos[k].y, (pos[k].z), "Appuyer sur ~b~E~s~ pour ~b~consulter le catalogue~s~")
+                end
                 if IsControlJustPressed(1, 51) then
-                    FreezeEntityPosition(PlayerPedId(), true)
+                    --FreezeEntityPosition(PlayerPedId(), true)
                     MenuConcessionnaire()
                     getCategories()
                 end
@@ -249,7 +280,7 @@ end)
 -- Blips
 
 Citizen.CreateThread(function()
-    for k,v in pairs (xCarDealer.Position.Menu) do
+    for k,v in pairs (xCarDealer.Blips.Pos) do
         local blips = AddBlipForCoord(v.x, v.y, v.z)
         SetBlipSprite(blips, xCarDealer.Blips.Model)
         SetBlipColour(blips, xCarDealer.Blips.Couleur)
